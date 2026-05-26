@@ -15,6 +15,7 @@ from ..logging import logger
 from . import api
 from app import create_app
 from ..unlock_acc import get_account_password
+from ..utils import tx_input_hex
 
 w3 = Web3(HTTPProvider(config["FULLNODE_URL"], 
                        request_kwargs={'timeout': int(config['FULLNODE_TIMEOUT'])}))
@@ -116,9 +117,10 @@ def get_transaction(txid):
                 logger.warning(f"Regular {coin_symbol} transactions to our addresses in {block_num} block: {block_eth_tx_addrs}")
 
                 related_internal_addr = []
+                tx_input = tx_input_hex(transaction)
 
                 for acc_addr in list_accounts:
-                    if acc_addr[2:].lower() in transaction['input']:
+                    if acc_addr[2:].lower() in tx_input:
                         if acc_addr not in block_eth_tx_addrs:
                             related_internal_addr.append(acc_addr)
                         else:
@@ -139,11 +141,12 @@ def get_transaction(txid):
 
                 logger.warning("Checking block for another internal txs to related addresses")
                 for tr in block.transactions:
-                    if ((len(tr.input) > 6) and # check only txs with input (regular {config["COIN_SYMBOL"]} transactions input is '0x')
-                        (tr['to'] not in token_addresses) and  # do not check internal tx to known token addresses and requested tx
+                    tr_input = tx_input_hex(tr)
+                    if ((len(tr_input) > 6) and
+                        (tr['to'] not in token_addresses) and
                         tr['hash'].hex() != txid ):
                         for addr in related_internal_addr:
-                            if addr[2:].lower() in tr.input:
+                            if addr[2:].lower() in tr_input:
                                 logger.warning(f"Found another internal transaction {tr['hash'].hex()} to our address {addr} in the same block, skip it!")
                                 addresses_in_another_txs.append(addr)
                 

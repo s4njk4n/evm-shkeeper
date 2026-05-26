@@ -105,6 +105,7 @@ config = {
             default=_coin_defaults['BLOCK_SCANNER_BATCH_SIZE'],
         )
     ),
+    'BLOCK_SCAN_LAG': int(os.environ.get('BLOCK_SCAN_LAG', 2)),
     'ENABLE_INTERNAL_TX_SCAN': _env_bool(
         'ENABLE_INTERNAL_TX_SCAN',
         default=_coin_defaults['ENABLE_INTERNAL_TX_SCAN'],
@@ -122,6 +123,7 @@ config = {
         _coin_defaults['UNLOCK_ACCOUNT_TIME'],
     ),
     'FORCE_ADD_WALLETS_TO_DB': os.environ.get('FORCE_ADD_WALLETS_TO_DB', 'False'),
+    'L1_GAS_PRICE_ORACLE': getattr(_chain, 'L1_GAS_PRICE_ORACLE', None),
 }
 
 

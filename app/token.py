@@ -13,6 +13,30 @@ from .models import Accounts, Settings, Wallets, db
 from .unlock_acc import get_account_password
 
 
+_L1_FEE_ABI = [
+    {
+        "inputs": [{"internalType": "bytes", "name": "_data", "type": "bytes"}],
+        "name": "getL1Fee",
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function",
+    }
+]
+
+
+def _get_l1_fee(provider, tx_data=b""):
+    """Return L1 data fee in ether for OP Stack chains, or 0 for others."""
+    oracle_addr = config.get('L1_GAS_PRICE_ORACLE')
+    if not oracle_addr:
+        return Decimal(0)
+    oracle = provider.eth.contract(
+        address=Web3.to_checksum_address(oracle_addr),
+        abi=_L1_FEE_ABI,
+    )
+    l1_fee_wei = oracle.functions.getL1Fee(tx_data).call()
+    return Decimal(provider.from_wei(l1_fee_wei, "ether"))
+
+
 def get_all_accounts():
     account_list = []
     tries = 3
@@ -171,10 +195,11 @@ class Coin:
         gas_price = self.provider.eth.gas_price
         max_fee_per_gas = ( Decimal(self.provider.from_wei(gas_price, "ether")) + Decimal(fee) ) * multiplier
         # Check if enouth funds for multipayout on account
+        l1_fee = _get_l1_fee(self.provider)
         should_pay  = Decimal(0)
         for payout in payout_list:
             should_pay = should_pay + Decimal(payout['amount'])
-        should_pay = should_pay + len(payout_list) * (max_fee_per_gas * gas_count)
+        should_pay = should_pay + len(payout_list) * ((max_fee_per_gas * gas_count) + l1_fee)
         have_crypto = self.get_fee_deposit_coin_balance()
         if have_crypto < should_pay:
             raise Exception(f"Have not enough crypto on fee account, need {should_pay} have {have_crypto}")
@@ -250,7 +275,8 @@ class Coin:
             #raise Exception(f"Cannot send funds, not enough for paying fee")  
             return False
 
-        can_send = account_balance - ( gas_count * max_fee_per_gas )
+        l1_fee = _get_l1_fee(self.provider)
+        can_send = account_balance - ( gas_count * max_fee_per_gas ) - l1_fee
 
         if can_send <= 0:
             logger.warning(f"Cannot send funds, {can_send} not enough for paying fee")             
@@ -579,11 +605,19 @@ class Token:
         
         payout_account = self.get_fee_deposit_account()
         
-        gas  = self.contract.functions.transfer(payout_list[0]['dest'], int((Decimal(payout_list[0]['amount']) * 10** (self.contract.functions.decimals().call())))).estimate_gas({'from': payout_account})
+        payout_amount_raw = int(Decimal(payout_list[0]['amount']) * 10 ** self.contract.functions.decimals().call())
+        gas = self.contract.functions.transfer(payout_list[0]['dest'], payout_amount_raw).estimate_gas({'from': payout_account})
+        dummy_tx = self.contract.functions.transfer(
+            payout_list[0]['dest'], payout_amount_raw,
+        ).build_transaction({
+            'from': Web3.to_checksum_address(payout_account),
+            'nonce': self.provider.eth.get_transaction_count(payout_account),
+        })
+        l1_fee = _get_l1_fee(self.provider, dummy_tx['data'])
         gas = int(gas * Decimal(config['MULTIPLIER']))
         gas_price = self.get_gas_price()
         max_fee_per_gas = ( Decimal(self.provider.from_wei(gas_price, "ether")) + Decimal(fee) ) #* Decimal(config['MULTIPLIER'])
-        need_crypto = gas * max_fee_per_gas
+        need_crypto = (gas * max_fee_per_gas) + l1_fee
         need_crypto_for_multipayout = need_crypto * len(payout_list) # approximate сalc just for checking 
         have_crypto = self.get_fee_deposit_account_balance()
         if need_crypto_for_multipayout > have_crypto:
@@ -645,11 +679,19 @@ class Token:
             return False
         else:            
             fee = self.get_max_priority_fee() 
-            gas  = self.contract.functions.transfer(destination, int((Decimal(can_send) * 10** (self.contract.functions.decimals().call())))).estimate_gas({'from': account})
+            token_amount_raw = int(Decimal(can_send) * 10 ** self.contract.functions.decimals().call())
+            gas = self.contract.functions.transfer(destination, token_amount_raw).estimate_gas({'from': account})
             gas = int(gas * Decimal(config['MULTIPLIER']))
             gas_price = self.get_gas_price()
             max_fee_per_gas = ( Decimal(self.provider.from_wei(gas_price, "ether")) + Decimal(fee) ) #* Decimal(config['MULTIPLIER'])
-            need_crypto = gas * max_fee_per_gas
+            dummy_tx = self.contract.functions.transfer(
+                destination, token_amount_raw,
+            ).build_transaction({
+                'from': Web3.to_checksum_address(account),
+                'nonce': self.provider.eth.get_transaction_count(account),
+            })
+            l1_fee = _get_l1_fee(self.provider, dummy_tx['data'])
+            need_crypto = (gas * max_fee_per_gas) + l1_fee
             # if there is not enough ARB for sending tokens
             logger.warning(f'gas: {str(gas)}\n gas_price: {str(gas_price)}\n need_crypto: {str(need_crypto)}\n balance: {str(Decimal(self.provider.from_wei(self.provider.eth.get_balance(account), "ether"))  )}')
             if Decimal(self.provider.from_wei(self.provider.eth.get_balance(account), "ether")) < need_crypto:            

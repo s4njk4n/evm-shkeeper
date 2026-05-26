@@ -22,6 +22,22 @@ def chain_head(w3) -> int:
     return int(value)
 
 
+def tx_input_hex(transaction) -> str:
+    """Return transaction input as lowercase hex string without 0x prefix.
+
+    Handles both web3 v5 (str) and v6+ (HexBytes) input formats.
+    """
+    if isinstance(transaction, dict):
+        tx_input = transaction.get('input')
+    else:
+        tx_input = getattr(transaction, 'input', None)
+    if not tx_input:
+        return ''
+    if isinstance(tx_input, str):
+        return tx_input[2:].lower() if tx_input.startswith('0x') else tx_input.lower()
+    return tx_input.hex().lower()
+
+
 class DecimalConverter(BaseConverter):
 
     def to_python(self, value):
