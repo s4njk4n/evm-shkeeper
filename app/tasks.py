@@ -4,7 +4,6 @@ import time
 import copy
 import requests
 import eth_account 
-from web3 import Web3, HTTPProvider
 from decimal import Decimal
 
 from celery.schedules import crontab
@@ -15,14 +14,13 @@ from . import celery
 from .config import COIN, config, get_min_token_transfer_threshold
 from .models import Accounts, db
 from .encryption import Encryption
-from .token import Token, Coin, get_all_accounts
+from .token import Token, Coin, get_all_accounts, make_provider
 from .unlock_acc import get_account_password
 from .utils import skip_if_running
 
 logger = get_task_logger(__name__)
 
-w3 = Web3(HTTPProvider(config["FULLNODE_URL"], 
-                       request_kwargs={'timeout': int(config['FULLNODE_TIMEOUT'])}))
+w3 = make_provider()
 
 @celery.task()
 def make_multipayout(symbol, payout_list, fee):

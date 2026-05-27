@@ -2,20 +2,13 @@ import time
 
 import ahocorasick
 import requests as rq
-from web3 import HTTPProvider, Web3
-
 from .config import config
 from .logging import logger
 from .models import Settings, db
-from .token import Token, get_all_accounts
+from .token import Token, get_all_accounts, make_provider
 from .utils import chain_head, tx_input_hex
 
-w3 = Web3(
-    HTTPProvider(
-        config['FULLNODE_URL'],
-        request_kwargs={'timeout': int(config['FULLNODE_TIMEOUT'])},
-    )
-)
+w3 = make_provider()
 
 
 # ── helpers ──────────────────────────────────────────────────────────────

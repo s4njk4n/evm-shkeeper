@@ -1,6 +1,5 @@
 import logging
 from prometheus_client import generate_latest, Gauge
-from web3 import Web3, HTTPProvider
 
 from . import metrics_blueprint
 from ..config import config
@@ -25,10 +24,8 @@ def safe_int(value, default=0):
 
 def get_all_metrics():
     try:
-        w3 = Web3(HTTPProvider(
-            config['FULLNODE_URL'],
-            request_kwargs={'timeout': int(config['FULLNODE_TIMEOUT'])},
-        ))
+        from ..token import make_provider
+        w3 = make_provider()
     except Exception as e:
         logger.exception("Web3 init failed: %s", e)
         return None

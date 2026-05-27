@@ -2,14 +2,13 @@ from decimal import Decimal
 
 from flask import g, request
 from flask import current_app as app
-from web3 import Web3, HTTPProvider
 
 from .. import celery
 from ..tasks import make_multipayout 
 from ..utils import BaseConverter
 from . import api
 
-from ..token import Token, Coin
+from ..token import Token, Coin, make_provider
 from ..logging import logger
 from ..config import config
 
@@ -34,7 +33,7 @@ def calc_tx_fee(amount):
 
 @api.post('/multipayout')
 def multipayout():
-    w3 = Web3(HTTPProvider(config["FULLNODE_URL"], request_kwargs={'timeout': int(config['FULLNODE_TIMEOUT'])}))
+    w3 = make_provider()
     
     try:
         payout_list = request.get_json(force=True)

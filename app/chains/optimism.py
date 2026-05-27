@@ -2,7 +2,9 @@ COIN = 'OPETH'
 WALLET_ALIASES = ('OP',)
 
 DB_NAME = 'optimism-shkeeper'
-FULLNODE_URL = 'http://optimism:8545'
+# testnet
+# FULLNODE_URL = 'https://sepolia.optimism.io'
+FULLNODE_URL = 'http://optimism:8547'
 
 ENV = {
     'network': (

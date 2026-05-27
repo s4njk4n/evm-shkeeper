@@ -1,5 +1,6 @@
 from web3 import HTTPProvider, Web3
 from web3.exceptions import BadFunctionCallOutput
+from web3.middleware import ExtraDataToPOAMiddleware
 from decimal import Decimal
 from flask import current_app as app
 import time
@@ -11,6 +12,15 @@ from .encryption import Encryption
 from .config import config, get_contract_abi, get_contract_address, get_min_token_transfer_threshold
 from .models import Accounts, Settings, Wallets, db
 from .unlock_acc import get_account_password
+
+
+def make_provider(url=None, timeout=None):
+    url = url or config['FULLNODE_URL']
+    timeout = timeout or int(config['FULLNODE_TIMEOUT'])
+    provider = Web3(HTTPProvider(url, request_kwargs={'timeout': timeout}))
+    if config.get('USE_POA_MIDDLEWARE'):
+        provider.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
+    return provider
 
 
 _L1_FEE_ABI = [
@@ -57,14 +67,12 @@ def get_all_accounts():
 
 class Coin:
     
-    w3 = Web3(HTTPProvider(config["FULLNODE_URL"], 
-                           request_kwargs={'timeout': int(config['FULLNODE_TIMEOUT'])}))
+    w3 = make_provider()
 
     def __init__(self, symbol, init=True):
         self.symbol = symbol        
         self.fullnode = config["FULLNODE_URL"]
-        self.provider =  Web3(HTTPProvider(config["FULLNODE_URL"], 
-                                           request_kwargs={'timeout': int(config['FULLNODE_TIMEOUT'])})) # Web3(HTTPProvider(config["FULLNODE_URL"]))
+        self.provider = make_provider()
 
     def get_max_priority_fee(self):
         if config['MAX_PRIORITY_FEE_MODE'] == 'static':
@@ -364,14 +372,14 @@ class Coin:
 
 
 class Token:
-    w3 = Web3(HTTPProvider(config["FULLNODE_URL"], request_kwargs={'timeout': int(config['FULLNODE_TIMEOUT'])}))
+    w3 = make_provider()
 
     def __init__(self, symbol, init=True):
         self.symbol = symbol        
         self.contract_address = get_contract_address(symbol)
         self.abi = get_contract_abi(symbol)
         self.fullnode = config["FULLNODE_URL"]
-        self.provider = Web3(HTTPProvider(config["FULLNODE_URL"]))
+        self.provider = make_provider()
         self.contract = self.provider.eth.contract(address=self.contract_address, abi=self.abi)
 
 

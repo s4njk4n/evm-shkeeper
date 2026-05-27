@@ -124,6 +124,7 @@ config = {
     ),
     'FORCE_ADD_WALLETS_TO_DB': os.environ.get('FORCE_ADD_WALLETS_TO_DB', 'False'),
     'L1_GAS_PRICE_ORACLE': getattr(_chain, 'L1_GAS_PRICE_ORACLE', None),
+    'USE_POA_MIDDLEWARE': getattr(_chain, 'USE_POA_MIDDLEWARE', False),
 }
 
 

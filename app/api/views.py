@@ -2,7 +2,7 @@ import json
 from decimal import Decimal
 
 from flask import current_app, g
-from web3 import Web3, HTTPProvider
+from web3 import Web3
 import decimal
 import requests
 
@@ -10,15 +10,14 @@ from .. import events
 from ..config import config
 from ..models import Accounts, Settings, Wallets, db
 from ..encryption import Encryption
-from ..token import Token, Coin, get_all_accounts
+from ..token import Token, Coin, get_all_accounts, make_provider
 from ..logging import logger
 from . import api
 from app import create_app
 from ..unlock_acc import get_account_password
 from ..utils import tx_input_hex
 
-w3 = Web3(HTTPProvider(config["FULLNODE_URL"], 
-                       request_kwargs={'timeout': int(config['FULLNODE_TIMEOUT'])}))
+w3 = make_provider()
 
 w3l = Web3()
 
