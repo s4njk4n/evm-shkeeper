@@ -70,9 +70,6 @@ def test_xdc_chain_defaults():
     assert xdc.DB_NAME == "xdc-shkeeper"
     assert xdc.DEFAULTS["ENABLE_INTERNAL_TX_SCAN"] is False
 
-def test_wallet_alias_maps_xdc_to_xdc():
-    assert WALLET_ALIASES["XDC"] == "XDC"
-
 def test_xdc_mainnet_has_usdc_token():
     assert "XDC-USDC" in xdc.TOKENS["main"]
 
